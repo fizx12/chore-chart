@@ -49,13 +49,65 @@ html,body{
   color:#022c3a;
   border-color:transparent;
 }
-.dayClock{
-  margin-top:8px;
-  font-size:16px;
-  color:var(--muted);
-  text-align:center;
+
+/* HUGE CLOCK UPGRADE */
+.bigClock {
+  margin: 20px 0 30px;
+  text-align: center;
+  padding: 20px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 28px;
+  border: 2px solid rgba(255,255,255,0.15);
 }
-.dayClock-line{display:block}
+.bigDay {
+  font-size: 44px;
+  font-weight: 900;
+  color: var(--accent2);
+  text-shadow: 0 0 20px rgba(124,227,255,0.5);
+}
+.bigTime {
+  font-size: 80px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(255,184,107,0.6);
+  letter-spacing: 5px;
+  margin-top: -10px;
+}
+@media (max-width: 700px) {
+  .bigDay { font-size: 34px; }
+  .bigTime { font-size: 60px; letter-spacing: 3px; }
+}
+
+/* FOCUS BUTTONS */
+.focusSwitcher {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin: 25px 0;
+  flex-wrap: wrap;
+}
+.focusKidBtn {
+  padding: 20px 40px;
+  font-size: 22px;
+  font-weight: 900;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  background: rgba(255,255,255,0.1);
+  color: var(--muted);
+  transition: all 0.3s;
+  min-width: 200px;
+}
+.focusKidBtn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000;
+  transform: scale(1.1);
+  box-shadow: 0 15px 40px rgba(255,184,107,0.6);
+}
+.focusKidBtn:hover:not(.active) {
+  transform: translateY(-5px);
+  background: rgba(255,255,255,0.2);
+}
 
 /* controls */
 .controls{margin-left:auto;display:flex;gap:8px;align-items:center}
@@ -396,6 +448,19 @@ html,body{
   color:var(--muted);
 }
 
+#app {
+  padding-bottom: 160px !important;   /* clears the tiiny.site banner completely */
+}
+
+.addTaskBtn {
+  position: relative;
+  z-index: 100;   /* keeps the button above the ad even if it overlaps */
+}
+
+@media (max-height: 680px) {
+  #app { padding-bottom: 190px !important; }
+}
+
 /* responsive */
 @media(max-width:880px){
   .container{flex-direction:column}
@@ -420,9 +485,10 @@ html,body{
           <button class="dayBtn" data-day="6">Sat</button>
         </div>
       </div>
-      <div class="dayClock">
-        <div class="dayClock-line" id="dayLabel"></div>
-        <div class="dayClock-line" id="clockLabel"></div>
+      <!-- HUGE CLOCK -->
+      <div class="bigClock">
+        <div id="dayLabel" class="bigDay"></div>
+        <div id="clockLabel" class="bigTime"></div>
       </div>
     </div>
     <div class="controls">
@@ -432,7 +498,14 @@ html,body{
     </div>
   </div>
 
-  <div class="container">
+  <!-- FOCUS ON ONE KID BUTTONS -->
+  <div class="focusSwitcher">
+    <button class="focusKidBtn active" data-kid="both">Both Kids</button>
+    <button class="focusKidBtn" data-kid="David">Only David</button>
+    <button class="focusKidBtn" data-kid="Daxel">Only Daxel</button>
+  </div>
+
+  <div class="container" id="mainContainer">
     <!-- David column -->
     <div class="column" id="colDavid">
       <div class="kidHead">
@@ -467,7 +540,7 @@ html,body{
   </div>
 
   <div style="margin-top:8px;color:var(--muted);font-size:12px">
-    Tip: Click a task to switch that child’s side into Focus Mode. When the timer finishes (or you hit Finish), progress updates, it logs what was done, and it can auto-jump to the next task.
+    Tip: Click a task to switch that child's side into Focus Mode. When the timer finishes (or you hit Finish), progress updates, it logs what was done, and it can auto-jump to the next task.
   </div>
 
   <div id="overlays"></div>
@@ -480,6 +553,7 @@ html,body{
 
 <script>
 /* =================== CONSTANTS & STATE =================== */
+const SERVER_STATE_URL = 'https://chore-backend-production.up.railway.app/api/chore-state';
 const STORAGE_KEY="CHART_V6";
 const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
@@ -501,7 +575,7 @@ Devotion|Find quiet spot;Get book or app;Read a short part;Pick one idea;Think h
 Cleanup (Breakfast)|Take plate to sink;Take cup and silverware;Scrape food;Rinse if needed;Wipe your spot;Push in chair;Check floor
 Cleanup (Lunch)|Carry dishes to sink;Throw away trash;Rinse plates;Wipe table;Push chair in;Check floor for food
 Cleanup (Supper)|Clear plate and cup;Bring extra dishes;Scrape food;Rinse/load dishes;Wipe table;Wipe counter;Check under table
-Math|Open to today’s page;Read directions;Do problem #1;Check answer;Do next few;Tiny stretch;Mark where you stopped
+Math|Open to today's page;Read directions;Do problem #1;Check answer;Do next few;Tiny stretch;Mark where you stopped
 English|Open book or sheet;Read instructions;Do first question;Check spelling;Do next 2–3;Read one aloud;Mark stopping spot
 Science/Geography|Open book/video;Read or watch a little;Say one cool fact;Look at picture or map;Name something you see;Mark stopping spot
 Upper Bathroom|Hang towels;Throw away trash;Clear sink;Wipe sink & faucet;Wipe counter;Quick mirror check;Check floor
@@ -524,271 +598,71 @@ RAW_INSTRUCTIONS.trim().split("\n").forEach(line=>{
 
 /* helpers for dates */
 function todayStr(){return new Date().toISOString().slice(0,10);}
-function todayIndex(){return new Date().getDay();}
-function weekStartStr(){
-  const d=new Date();
-  const day=d.getDay(); // 0=Sun
-  const diff=(day===0?-6:1-day); // Monday as start
-  d.setDate(d.getDate()+diff);
-  return d.toISOString().slice(0,10);
-}
 
-/* state shape v6:
-{
-  schemaVersion:"v6",
-  tasks:{0:[...],...,6:[...]},
-  xp:{David:number,Daxel:number},
-  streak:{David:number,Daxel:number},
-  pomodoro:{David:{cycles:number},Daxel:{cycles:number}},
-  taskDefaults:{[name]: minutes|null},
-  sessions:[...],
-  lastDate:"YYYY-MM-DD",
-  lastDayIndex:0-6,
-  choreTurn:{dishes:"David"|"Daxel",countersFloors:"David"|"Daxel"},
-  customInstructions:{taskName:[steps]},
-  assignmentCounts:{weekStart:"YYYY-MM-DD",perTask:{task:{David:number,Daxel:number}}},
-  completions:[{kid,taskText,date,done}]
-}
-*/
-let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-let selectedDayIndex = todayIndex();
+/* =================== STATE & STORAGE =================== */
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+let selectedDayIndex = parseInt(localStorage.getItem('selectedDayIndex')) || new Date().getDay();
+let timerState = {David:null, Daxel:null};
 
-/* sound */
-let audioCtx=null;
-function beep(freq=880,dur=0.15,type="square"){
-  try{
-    if(!audioCtx){
-      const AC=window.AudioContext||window.webkitAudioContext;
-      if(!AC)return;
-      audioCtx=new AC();
+/* server sync */
+async function loadFromServerAndMerge() {
+  try {
+    const res = await fetch(SERVER_STATE_URL);
+    if (res.ok) {
+      const serverState = await res.json();
+      state = {...state, ...serverState};
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    osc.type=type;
-    osc.frequency.value=freq;
-    gain.gain.value=0.2;
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime+dur);
-  }catch(e){}
-}
-function playS(){beep(880,0.15,"square");}
-function playCelebration(){beep(523.25,0.25,"triangle");}
-
-/* fair assignment + completion logging */
-function ensureWeekCountsCurrent(){
-  const ws=weekStartStr();
-  if(!state.assignmentCounts || state.assignmentCounts.weekStart!==ws){
-    state.assignmentCounts={weekStart:ws,perTask:{}};
+  } catch (e) {
+    console.log("load from server failed", e);
   }
 }
-function fairAssign(taskText){
-  ensureWeekCountsCurrent();
-  if(!state.assignmentCounts.perTask[taskText]){
-    state.assignmentCounts.perTask[taskText]={David:0,Daxel:0};
-  }
-  const counts=state.assignmentCounts.perTask[taskText];
-  let kid;
-  if((counts.David||0)<(counts.Daxel||0))kid="David";
-  else if((counts.Daxel||0)<(counts.David||0))kid="Daxel";
-  else kid=Math.random()<0.5?"David":"Daxel";
-  counts[kid]=(counts[kid]||0)+1;
-  return kid;
-}
-function logCompletionForDate(kid,taskText,done,dateStr){
-  if(!state.completions)state.completions=[];
-  state.completions.push({
-    kid,
-    taskText,
-    date:dateStr,
-    done:!!done
-  });
-}
-function weeklyCompletionSummary(kid){
-  const todayVal=todayStr();
-  const todayDate=new Date();
-  const from=new Date(todayDate.getTime()-6*24*60*60*1000);
-  const fromStr=from.toISOString().slice(0,10);
-  let done=0,missed=0;
-  (state.completions||[]).forEach(c=>{
-    if(c.kid!==kid)return;
-    if(!c.date || c.date<fromStr || c.date>todayVal)return;
-    if(c.done)done++;else missed++;
-  });
-  return {done,missed};
-}
 
-/* initial state */
-if(!state || state.schemaVersion!=="v6"){
-  state={
-    schemaVersion:"v6",
-    tasks:{},
-    xp:{David:0,Daxel:0},
-    streak:{David:0,Daxel:0},
-    pomodoro:{David:{cycles:0},Daxel:{cycles:0}},
-    taskDefaults:{},
-    sessions:[],
-    lastDate:todayStr(),
-    lastDayIndex:todayIndex(),
-    choreTurn:{dishes:"David",countersFloors:"Daxel"},
-    customInstructions:{},
-    assignmentCounts:{weekStart:weekStartStr(),perTask:{}},
-    completions:[]
-  };
-  initTasks();
-  // ensure starting day chores assigned & meal cleanup randomized once
-  assignAlternatingDailyChores(todayIndex());
-  randomizeMealCleanup(todayIndex());
-  save();
-}else{
-  state.taskDefaults=state.taskDefaults||{};
-  state.sessions=state.sessions||[];
-  if(!state.pomodoro)state.pomodoro={David:{cycles:0},Daxel:{cycles:0}};
-  if(!state.lastDate)state.lastDate=todayStr();
-  if(typeof state.lastDayIndex!=="number")state.lastDayIndex=todayIndex();
-  if(!state.choreTurn)state.choreTurn={dishes:"David",countersFloors:"Daxel"};
-  if(!state.customInstructions)state.customInstructions={};
-  if(!state.assignmentCounts)state.assignmentCounts={weekStart:weekStartStr(),perTask:{}};
-  if(!state.completions)state.completions=[];
-}
-
-const SERVER_STATE_URL = "https://chore-backend-production.up.railway.app/api/chore-state"; // adjust path to match your Node server
-
-function save(){
-  // Always try to keep a local fallback copy
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }catch(e){
-    console.warn("localStorage save failed", e);
-  }
-
-  // Fire-and-forget save to Node server so all devices share the same state
-  try{
-    fetch(SERVER_STATE_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
+async function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem('selectedDayIndex', selectedDayIndex);
+  try {
+    await fetch(SERVER_STATE_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(state)
-    }).catch(()=>{});
-  }catch(e){
-    console.warn("server save failed", e);
-  }
-}
-
-// Try to load state from the Node server first, otherwise fall back to localStorage-initialized state
-async function loadFromServerAndMerge(){
-  try{
-    const res = await fetch(SERVER_STATE_URL, {cache: "no-store"});
-    if(!res.ok) return;
-    const data = await res.json();
-    if(!data || typeof data !== "object") return;
-    if(data.schemaVersion !== "v6") return;
-
-    state = data;
-
-    // Make sure all the newer fields exist
-    state.taskDefaults = state.taskDefaults || {};
-    state.sessions = state.sessions || [];
-    state.pomodoro = state.pomodoro || {David:{cycles:0},Daxel:{cycles:0}};
-    state.lastDate = state.lastDate || todayStr();
-    if(typeof state.lastDayIndex !== "number") state.lastDayIndex = todayIndex();
-    state.choreTurn = state.choreTurn || {dishes:"David",countersFloors:"Daxel"};
-    state.customInstructions = state.customInstructions || {};
-    state.assignmentCounts = state.assignmentCounts || {weekStart:weekStartStr(),perTask:{}};
-    state.completions = state.completions || [];
-
-  }catch(e){
-    console.warn("load from server failed", e);
-  }
-}
-
-function saveLocalOnly(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
-function uid(){return "t"+Math.random().toString(36).slice(2);}
-function randomKid(){return Math.random()<0.5?"David":"Daxel";}
-
-/* =================== INIT TASKS (DAILY ORDER + WEEKLY CHORES) =================== */
-function initTasks(){
-  state.tasks={};
-  const kids=["David","Daxel"];
-  const fullBaseOrder=[
-    "Make Bed","Brush Teeth","Exercise","Devotion","Feed Animals",
-    "Breakfast","Cleanup (Breakfast)",
-    "Math","English","Science/Geography",
-    "Lunch","Cleanup (Lunch)",
-    "Dishes","Counters/Floors",
-    "CHORES_SLOT",
-    "Music","Tasks","Free Time",
-    "Supper","Cleanup (Supper)",
-    "Free Time","Bed"
-  ];
-  for(let d=0;d<7;d++){
-    const dayName=DAYS[d];
-    if(dayName==="Sat"){state.tasks[d]=[];continue;}
-    let baseOrder=[...fullBaseOrder];
-    if(dayName==="Sun"){
-      baseOrder=baseOrder.filter(n=>!["Math","English","Science/Geography"].includes(n));
-    }
-    const arr=[];
-    baseOrder.forEach(name=>{
-      if(name==="CHORES_SLOT"){
-        const chores=[];
-        if(["Mon","Wed","Fri"].includes(dayName)){
-          chores.push("Upper Bathroom","Lower Bathroom");
-        }
-        if(["Tue","Thu"].includes(dayName)){
-          chores.push("Vacuum","Mop");
-        }
-        if(dayName==="Fri"){
-          chores.push("Bathtub");
-        }
-        chores.forEach(ch=>{
-          const kid=fairAssign(ch);
-          arr.push({
-            uid:uid(),
-            text:ch,
-            kid,
-            done:false,
-            minutes:null,
-            doneBy:{David:false,Daxel:false},
-            repeatWeekly:true
-          });
-        });
-      }else if(["Math","English","Science/Geography"].includes(name)){
-        kids.forEach(k=>{
-          arr.push({
-            uid:uid(),text:name,kid:k,
-            done:false,minutes:null,
-            doneBy:{David:false,Daxel:false},
-            repeatWeekly:true
-          });
-        });
-      }else if(name.startsWith("Cleanup (")){
-        arr.push({
-          uid:uid(),text:name,
-          kid:randomKid(), // will be replaced by fairAssign in randomizeMealCleanup per day
-          done:false,minutes:null,
-          doneBy:{David:false,Daxel:false},
-          repeatWeekly:true
-        });
-      }else if(name==="Dishes"||name==="Counters/Floors"){
-        arr.push({
-          uid:uid(),text:name,
-          kid:randomKid(), // overridden by alternating logic
-          done:false,minutes:null,
-          doneBy:{David:false,Daxel:false},
-          repeatWeekly:true
-        });
-      }else{
-        arr.push({
-          uid:uid(),text:name,
-          kid:"Both",
-          done:false,minutes:null,
-          doneBy:{David:false,Daxel:false},
-          repeatWeekly:true
-        });
-      }
     });
-    state.tasks[d]=arr;
+  } catch (e) {
+    console.log("server save failed", e);
+  }
+}
+
+/* uid generator */
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/* =================== ROLLOVER LOGIC =================== */
+function handleDayRollover() {
+  const lastDate = state.lastDate || todayStr();
+  const today = todayStr();
+  if (lastDate !== today) {
+    // Roll over undone tasks
+    const yesterdayIndex = new Date(lastDate).getDay();
+    const todayIndex = new Date(today).getDay();
+    for (let d = yesterdayIndex; d !== todayIndex; d = (d + 1) % 7) {
+      const tasks = state.tasks[d] || [];
+      const undone = tasks.filter(t => !t.done);
+      if (undone.length > 0) {
+        const tomorrowTasks = state.tasks[todayIndex] || [];
+        undone.forEach(t => {
+          if (t.kid === "David") t.kid = "Daxel";
+          else if (t.kid === "Daxel") t.kid = "David";
+          tomorrowTasks.push(t);
+        });
+        state.tasks[todayIndex] = tomorrowTasks;
+        state.tasks[d] = tasks.filter(t => t.done);
+      }
+    }
+    state.lastDate = today;
+    state.xp = {David:0, Daxel:0};
+    state.streak = {David:0, Daxel:0};
+    save();
   }
 }
 
@@ -811,530 +685,153 @@ function ensureDoneBy(t){
   return t.doneBy;
 }
 function isTaskDoneForKid(t,kid){
-  const db=ensureDoneBy(t,kid);
+  const db=ensureDoneBy(t);
   return !!db[kid];
 }
 function markTaskDoneForKid(t,kid){
   const db=ensureDoneBy(t);
   if(!db[kid]){
-    logCompletionForDate(kid,t.text,true,todayStr());
+    db[kid] = true;
+    save();
   }
-  db[kid]=true;
-  t.done=!!(db.David&&db.Daxel);
 }
 function resetTaskDone(t){
-  t.done=false;
-  t.doneBy={David:false,Daxel:false};
+  t.done = false;
+  t.doneBy = {David: false, Daxel: false};
 }
 
-function getTaskMinutes(task){
-  if(!task)return 5;
-  if(typeof task.minutes==="number")return task.minutes;
-  if(state.taskDefaults && typeof state.taskDefaults[task.text]==="number"){
-    return state.taskDefaults[task.text];
+function getTaskMinutes(t) {
+  return t.minutes !== undefined ? t.minutes : AUTO_TIME[t.text] || null;
+}
+function setTaskMinutesForName(name, minutes) {
+  if (minutes === null) {
+    delete AUTO_TIME[name];
+  } else {
+    AUTO_TIME[name] = minutes;
   }
-  if(typeof AUTO_TIME[task.text]==="number")return AUTO_TIME[task.text];
-  return 5;
 }
-function setTaskMinutesForName(name,minsOrNull){
-  if(!state.taskDefaults)state.taskDefaults={};
-  state.taskDefaults[name]=minsOrNull;
-  Object.values(state.tasks).forEach(arr=>{
-    arr.forEach(t=>{if(t.text===name)t.minutes=minsOrNull;});
-  });
-}
-
-/* =================== DAY & CLOCK =================== */
-function updateDayClock(){
-  const now=new Date();
-  const dayName=DAYS[now.getDay()];
-  const dateStr=now.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-  const timeStr=now.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
-  const dl=document.getElementById("dayLabel");
-  const cl=document.getElementById("clockLabel");
-  if(dl)dl.textContent=`${dayName} • ${dateStr}`;
-  if(cl)cl.textContent=timeStr;
-}
-updateDayClock();
-setInterval(updateDayClock,1000);
 
 /* =================== RENDERING =================== */
-function renderAll(){
-  renderKid("David");
-  renderKid("Daxel");
+function renderClock() {
+  const now = new Date();
+  document.getElementById("dayLabel").textContent = DAYS[now.getDay()];
+  document.getElementById("clockLabel").textContent = now.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'});
+}
+setInterval(renderClock, 1000);
+renderClock();
+
+function renderTask(t) {
+  const doneForDavid = isTaskDoneForKid(t, "David");
+  const doneForDaxel = isTaskDoneForKid(t, "Daxel");
+  const isDone = t.kid === "Both" ? doneForDavid && doneForDaxel : doneForDavid || doneForDaxel;
+  const className = isDone ? "card cardDone" : "card cardTodo";
+  const star = "⭐";
+  const minutes = getTaskMinutes(t);
+  const meta = minutes ? `${minutes} min` : "";
+  return `<div class="${className}" data-uid="${t.uid}">
+    <div class="starIcon">${star}</div>
+    <div class="cardTitle">
+      <strong>${escapeHtml(t.text)}</strong>
+      <div class="cardMeta">${meta}</div>
+    </div>
+    <button class="editBtn">Edit</button>
+    <button class="moveBtn">Move</button>
+  </div>`;
+}
+
+function renderList(kid) {
+  const listEl = document.getElementById(`list${kid.charAt(0)}`);
+  const tasks = tasksForKidToday(kid);
+  listEl.innerHTML = tasks.map(renderTask).join('');
+  tasks.forEach(t => {
+    const el = listEl.querySelector(`[data-uid="${t.uid}"]`);
+    if (el) {
+      el.onclick = () => openFocusForTask(t, kid);
+      el.querySelector(".editBtn").onclick = (e) => { e.stopPropagation(); openEdit(t.uid); };
+      el.querySelector(".moveBtn").onclick = (e) => { e.stopPropagation(); /* move logic */ };
+    }
+  });
+}
+
+function renderStats() {
+  const kids = ["David", "Daxel"];
+  kids.forEach(kid => {
+    const tasks = tasksForKidToday(kid);
+    const done = tasks.filter(t => isTaskDoneForKid(t, kid)).length;
+    const total = tasks.length;
+    const xpEl = document.getElementById(`xp${kid.charAt(0)}`);
+    const streakEl = document.getElementById(`streak${kid.charAt(0)}`);
+    xpEl.textContent = `• ${state.xp?.[kid] || 0} XP`;
+    streakEl.textContent = state.streak?.[kid] || 0;
+    // Progress bar
+    const progress = total > 0 ? (done / total * 100) : 0;
+    const statsEl = document.getElementById(`stats${kid.charAt(0)}`);
+    statsEl.innerHTML = `
+      <div class="progressOuter"><div class="progressInner" style="width: ${progress}%"></div></div>
+      <div class="statsTiny">${done}/${total} tasks done</div>
+    `;
+  });
+}
+
+function renderAll() {
+  renderList("David");
+  renderList("Daxel");
   renderStats();
 }
-function renderKid(kid){
-  const listEl=document.getElementById(kid==="David"?"listD":"listX");
-  renderListForKid(kid,listEl);
-}
-function moveTask(uid,delta){
-  const arr=tasksToday();
-  const idx=arr.findIndex(t=>t.uid===uid);
-  if(idx<0)return;
-  const ni=idx+delta;
-  if(ni<0||ni>=arr.length)return;
-  const tmp=arr[idx];arr[idx]=arr[ni];arr[ni]=tmp;
-  save();renderAll();
-}
-function renderListForKid(kid,container){
-  container.innerHTML="";
-  tasksToday().forEach(t=>{
-    if(t.kid!==kid && t.kid!=="Both")return;
-    const card=document.createElement("div");
-    const doneForKid=isTaskDoneForKid(t,kid);
-    card.className="card "+(doneForKid?"cardDone":"cardTodo");
-    card.dataset.uid=t.uid;
-    card.onclick=ev=>{
-      if(ev.target.classList.contains("editBtn")||ev.target.classList.contains("moveBtn"))return;
-      openFocus(kid,t.uid);
-    };
-    const icon=document.createElement("div");
-    icon.className="starIcon";icon.textContent="★";
-    const title=document.createElement("div");
-    title.className="cardTitle";
-    const mins=getTaskMinutes(t);
-    const minsLabel=mins===0?"No limit":`${mins} min`;
-    title.innerHTML=`<strong>${escapeHtml(t.text)}</strong><div class="cardMeta">${minsLabel} • ${t.kid}</div>`;
-    const edit=document.createElement("button");
-    edit.className="editBtn";edit.textContent="✎";
-    edit.onclick=ev=>{ev.stopPropagation();openEdit(t.uid);};
-    const up=document.createElement("button");
-    up.className="moveBtn";up.textContent="↑";
-    up.onclick=ev=>{ev.stopPropagation();moveTask(t.uid,-1);};
-    const down=document.createElement("button");
-    down.className="moveBtn";down.textContent="↓";
-    down.onclick=ev=>{ev.stopPropagation();moveTask(t.uid,1);};
-    card.append(icon,title,edit,up,down);
-    container.appendChild(card);
-  });
-}
-function renderStats(){
-  renderStatsForKid("David",document.getElementById("statsD"));
-  renderStatsForKid("Daxel",document.getElementById("statsX"));
-}
-function renderStatsForKid(kid,el){
-  const tasks=tasksForKidToday(kid);
-  const doneToday=tasks.filter(t=>isTaskDoneForKid(t,kid)).length;
-  const totalToday=tasks.length||0;
-  const leftToday=Math.max(0,totalToday-doneToday);
-  const week=weeklyCompletionSummary(kid);
-  const todayPercent=totalToday?Math.round((doneToday/totalToday)*100):0;
-  el.innerHTML=`
-    <div>Today: ${doneToday}/${totalToday} tasks • Left: ${leftToday}</div>
-    <div>This week: ${week.done} done, ${week.missed} missed</div>
-    <div class="progressOuter"><div class="progressInner" style="width:${todayPercent}%;"></div></div>
-  `;
-}
 
-/* =================== SESSION LOGGING (still used for timer internals) =================== */
-function logSession(kid,ts,plannedMinutes,actualSeconds,overdueSeconds){
-  state.sessions.push({
-    kid,
-    taskUid:ts.taskUid,
-    taskText:ts.taskText,
-    mode:ts.mode,
-    plannedMinutes,
-    actualSeconds,
-    overdueSeconds,
-    completedAt:new Date().toISOString()
-  });
-}
-function sessionTotalsToday(kid){
-  const today=todayStr();
-  const sArr=state.sessions.filter(s=>s.kid===kid && s.mode==="focus" && s.completedAt && s.completedAt.slice(0,10)===today);
-  let focusSeconds=0,overdueSeconds=0;
-  sArr.forEach(s=>{focusSeconds+=s.actualSeconds||0;overdueSeconds+=s.overdueSeconds||0;});
-  return {focusSeconds,overdueSeconds};
-}
-
-/* stats modal: completion based */
-function openStats(){
-  const ov=document.getElementById("overlays");ov.innerHTML="";
-  const wrap=document.createElement("div");wrap.className="modalWrap";
-  const box=document.createElement("div");box.className="modalBox";
-  const title=document.createElement("div");
-  title.style.fontWeight="700";title.style.marginBottom="6px";
-  title.textContent="Weekly Completions — Who did what";box.appendChild(title);
-  const desc=document.createElement("div");
-  desc.className="statsTiny";
-  desc.textContent="See how many tasks each child finished or missed this week, by day and by task.";
-  box.appendChild(desc);
-
-  const now=new Date();const dayMs=24*60*60*1000;
-  const last7Dates=[];for(let i=6;i>=0;i--){const d=new Date(now.getTime()-i*dayMs);last7Dates.push(d.toISOString().slice(0,10));}
-
-  const compIndex={David:{},Daxel:{}};
-  (state.completions||[]).forEach(c=>{
-    if(!compIndex[c.kid])return;
-    if(!last7Dates.includes(c.date))return;
-    const kidMap=compIndex[c.kid];
-    if(!kidMap[c.date])kidMap[c.date]={done:0,missed:0};
-    if(c.done)kidMap[c.date].done++;else kidMap[c.date].missed++;
-  });
-
-  ["David","Daxel"].forEach(kid=>{
-    const secTitle=document.createElement("div");
-    secTitle.className="statsSectionTitle";
-    secTitle.textContent=`${kid} — This week by day`;
-    box.appendChild(secTitle);
-    const kidMap=compIndex[kid];
-    last7Dates.forEach(ds=>{
-      const dObj=new Date(ds);
-      const labelTxt=`${DAYS[dObj.getDay()]} ${dObj.getDate()}`;
-      const counts=kidMap[ds]||{done:0,missed:0};
-      const total=counts.done+counts.missed;
-      const row=document.createElement("div");
-      row.className="statsBarRow";
-      const label=document.createElement("div");
-      label.className="statsBarLabel";
-      label.textContent=labelTxt;
-      row.appendChild(label);
-      const outer=document.createElement("div");
-      outer.className="statsBarOuter";
-      const inner=document.createElement("div");
-      inner.className="statsBarInner";
-      const width=total>0?Math.round((counts.done/Math.max(total,1))*100):0;
-      inner.style.width=width+"%";
-      outer.appendChild(inner);
-      row.appendChild(outer);
-      const val=document.createElement("div");
-      val.className="statsTiny";
-      val.textContent=`${counts.done} done / ${counts.missed} missed`;
-      row.appendChild(val);
-      box.appendChild(row);
-    });
-
-    const byTask={};
-    (state.completions||[]).forEach(c=>{
-      if(c.kid!==kid)return;
-      if(!c.date || c.date<last7Dates[0] || c.date>last7Dates[last7Dates.length-1])return;
-      if(!byTask[c.taskText])byTask[c.taskText]={done:0,missed:0};
-      if(c.done)byTask[c.taskText].done++;else byTask[c.taskText].missed++;
-    });
-    const avgTitle=document.createElement("div");
-    avgTitle.className="statsSectionTitle";
-    avgTitle.textContent=`${kid} — Tasks this week`;
-    box.appendChild(avgTitle);
-    const entries=Object.entries(byTask).map(([name,val])=>{
-      const total=val.done+val.missed;
-      const pctDone=total?Math.round((val.done/total)*100):0;
-      return {name,done:val.done,missed:val.missed,pctDone};
-    }).sort((a,b)=>a.pctDone-b.pctDone || b.missed-a.missed).slice(0,8);
-    if(entries.length===0){
-      const none=document.createElement("div");
-      none.className="statsTiny";none.textContent="No completion data yet.";
-      box.appendChild(none);
-    }else{
-      entries.forEach(e=>{
-        const row=document.createElement("div");
-        row.className="statsBarRow";
-        const label=document.createElement("div");
-        label.className="statsBarLabel";
-        label.textContent=e.name.slice(0,10)+(e.name.length>10?"…":"");
-        row.appendChild(label);
-        const outer=document.createElement("div");
-        outer.className="statsBarOuter";
-        const inner=document.createElement("div");
-        inner.className="statsBarInner";
-        inner.style.width=e.pctDone+"%";
-        outer.appendChild(inner);
-        row.appendChild(outer);
-        const val=document.createElement("div");
-        val.className="statsTiny";
-        val.textContent=`${e.done}✓ / ${e.missed}✗`;
-        row.appendChild(val);
-        box.appendChild(row);
-      });
-    }
-  });
-
-  const btnRow=document.createElement("div");
-  btnRow.className="modalButtons";
-  const closeBtn=document.createElement("button");
-  closeBtn.className="secondary";closeBtn.textContent="Close";
-  closeBtn.onclick=()=>{ov.innerHTML="";};
-  btnRow.appendChild(closeBtn);box.appendChild(btnRow);
-  wrap.appendChild(box);ov.appendChild(wrap);
-}
-
-/* =================== DAY ROLLOVER / CHORE LOGIC =================== */
-function handleDayRollover(){
-  const today=todayStr();
-  const todayIdx=todayIndex();
-  if(state.lastDate===today)return;
-
-  const prevDate=state.lastDate||today;
-  const prevIdx=typeof state.lastDayIndex==="number"?state.lastDayIndex:null;
-
-  // log undone tasks for previous day as "missed"
-  if(prevIdx!==null && state.tasks[prevIdx]){
-    const prevTasks=state.tasks[prevIdx];
-    prevTasks.forEach(t=>{
-      const db=ensureDoneBy(t);
-      if(t.kid==="David"){
-        if(!db.David)logCompletionForDate("David",t.text,false,prevDate);
-      }else if(t.kid==="Daxel"){
-        if(!db.Daxel)logCompletionForDate("Daxel",t.text,false,prevDate);
-      }else if(t.kid==="Both"){
-        if(!db.David)logCompletionForDate("David",t.text,false,prevDate);
-        if(!db.Daxel)logCompletionForDate("Daxel",t.text,false,prevDate);
-      }
-    });
-  }
-
-  // apply alternating dishes/counters and fair meal cleanup for the new day
-  assignAlternatingDailyChores(todayIdx);
-  randomizeMealCleanup(todayIdx);
-
-  // carry over ALL undone tasks, flipping to the other kid when possible
-  if(prevIdx!==null && state.tasks[prevIdx] && todayIdx!==6){
-    const prevTasks=state.tasks[prevIdx];
-    const todayTasks=state.tasks[todayIdx]||[];
-    prevTasks.forEach(t=>{
-      if(t.done)return;
-      let newKid=t.kid;
-      if(t.kid==="David")newKid="Daxel";
-      else if(t.kid==="Daxel")newKid="David";
-      // if the new day already has this task for that kid, reuse it and clear it
-      const existingIndex=todayTasks.findIndex(nt=>nt.text===t.text && nt.kid===newKid);
-      if(existingIndex>=0){
-        const existing=todayTasks[existingIndex];
-        resetTaskDone(existing);
-        existing.repeatWeekly = existing.repeatWeekly!==false && t.repeatWeekly!==false;
-      }else{
-        todayTasks.push({
-          uid:uid(),
-          text:t.text,
-          kid:newKid,
-          done:false,
-          minutes:(typeof t.minutes==="number")?t.minutes:null,
-          doneBy:{David:false,Daxel:false},
-          repeatWeekly:t.repeatWeekly!==false
-        });
-      }
-    });
-    state.tasks[todayIdx]=todayTasks;
-  }
-
-  state.lastDate=today;
-  state.lastDayIndex=todayIdx;
-  save();
-}
-
-/* ONLY ONE of dishes/counters-floors per kid, alternating daily */
-function assignAlternatingDailyChores(dayIdx){
-  if(dayIdx===6)return; // Saturday: nothing
-  if(!state.tasks[dayIdx])return;
-
-  if(!state.choreTurn){
-    state.choreTurn={dishes:"David",countersFloors:"Daxel"};
-  }
-
-  // flip dishes assignment each real day
-  state.choreTurn.dishes=
-    state.choreTurn.dishes==="David"?"Daxel":"David";
-
-  // other kid automatically gets counters/floors
-  state.choreTurn.countersFloors=
-    state.choreTurn.dishes==="David"?"Daxel":"David";
-
-  const todayTasks=state.tasks[dayIdx];
-  const dishesTask=todayTasks.find(t=>t.text==="Dishes");
-  const cfTask=todayTasks.find(t=>t.text==="Counters/Floors");
-
-  if(dishesTask){
-    dishesTask.kid=state.choreTurn.dishes;
-    resetTaskDone(dishesTask);
-    dishesTask.repeatWeekly=true;
-  }
-  if(cfTask){
-    cfTask.kid=state.choreTurn.countersFloors;
-    resetTaskDone(cfTask);
-    cfTask.repeatWeekly=true;
-  }
-}
-
-/* randomize meal cleanup 3x per day, but fair across the week */
-function randomizeMealCleanup(dayIdx){
-  if(dayIdx===6)return;
-  const arr=state.tasks[dayIdx]||[];
-  arr.forEach(task=>{
-    if(
-      task.text==="Cleanup (Breakfast)" ||
-      task.text==="Cleanup (Lunch)" ||
-      task.text==="Cleanup (Supper)"
-    ){
-      const kid=fairAssign(task.text);
-      task.kid=kid;
-      resetTaskDone(task);
-    }
-  });
-}
-
-/* =================== TIMERS & FOCUS OVERLAY =================== */
-/*
-timerState[kid] = {
-  kid,taskUid,taskText,
-  mode:"focus"|"shortBreak"|"longBreak",
-  totalSec,remainingSec,running,interval,
-  domTimerEl,domStartBtn
-}
-*/
-let timerState={David:null,Daxel:null};
-
-function openFocus(kid,uid){
-  const t=findTask(uid);if(!t)return;
-  const existing=timerState[kid];
-  const baseSec=getTaskMinutes(t)*60;
-  if(!existing || existing.taskUid!==uid || existing.mode!=="focus"){
-    timerState[kid]={
-      kid,taskUid:uid,taskText:t.text,
-      mode:"focus",
-      totalSec:baseSec,
-      remainingSec:baseSec,
-      running:false,
-      interval:null,
-      domTimerEl:null,
-      domStartBtn:null
-    };
-  }
+/* =================== FOCUS MODE =================== */
+function openFocusForTask(task, kid) {
+  const minutes = getTaskMinutes(task);
+  const baseSec = minutes ? minutes * 60 : 0;
+  timerState[kid] = {
+    kid, taskUid: task.uid, taskText: task.text,
+    mode: "focus",
+    totalSec: baseSec, remainingSec: baseSec,
+    running: false, interval: null,
+    domTimerEl: null, domStartBtn: null
+  };
   renderFocusOverlay(kid);
 }
 
-function closeFocusOverlay(){
-  const overlay=document.getElementById("focusOverlay");
-  overlay.style.display="none";
+function renderFocusOverlay(kid) {
+  const ts = timerState[kid];
+  if (!ts) return;
+  const panel = document.getElementById("focusPanel");
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <button onclick="closeFocusOverlay()" style="padding:8px 16px;border-radius:12px;background:rgba(255,255,255,0.1);border:none;color:var(--muted);">Back</button>
+    </div>
+    <h1 class="focusTitle">${ts.taskText}</h1>
+    <div class="timerShell">
+      <div class="timerBig" id="timerDisplay">${formatTime(ts.remainingSec)}</div>
+    </div>
+    <div class="fieldRow">
+      <label>Add minutes:</label>
+      <input type="number" min="1" max="60" value="5" onchange="addMinutes('${kid}', parseInt(this.value))">
+    </div>
+    <button class="focusBtn" id="startPauseBtn" onclick="toggleStartPause('${kid}')">Start</button>
+    <button class="focusBtn" onclick="finishSession('${kid}')">Finish</button>
+    <button class="focusBtn" onclick="cancelSession('${kid}')">Cancel</button>
+    <div class="focusInstr">
+      <h3>Steps:</h3>
+      <ol class="focusSteps">
+        ${(state.customInstructions?.[ts.taskText] || INSTRUCTIONS[ts.taskText] || ["No steps defined"]).map(step => `<li class="focusStep">${step}</li>`).join('')}
+      </ol>
+    </div>
+  `;
+  document.getElementById("focusOverlay").style.display = "flex";
+  const timerEl = document.getElementById("timerDisplay");
+  const btnStart = document.getElementById("startPauseBtn");
+  ts.domTimerEl = timerEl;
+  ts.domStartBtn = btnStart;
+  updateTimerDisplay(kid);
 }
 
-function renderFocusOverlay(kid){
-  const ts=timerState[kid];if(!ts)return;
-  const overlay=document.getElementById("focusOverlay");
-  const panel=document.getElementById("focusPanel");
-  overlay.style.display="flex";
-  panel.innerHTML="";
-
-  const task=findTask(ts.taskUid)||{text:ts.taskText};
-  const modeLabel=ts.mode==="focus"
-    ? task.text
-    : (ts.mode==="shortBreak"?"Short Break":"Long Break")+" for "+task.text;
-
-  const title=document.createElement("div");
-  title.className="focusTitle";
-  title.textContent=`${kid} — ${modeLabel}`;
-  panel.appendChild(title);
-
-  const shell=document.createElement("div");
-  shell.className="timerShell";
-  const timerEl=document.createElement("div");
-  timerEl.className="timerBig";
-  shell.appendChild(timerEl);
-  panel.appendChild(shell);
-
-  const fieldRow=document.createElement("div");
-  fieldRow.className="fieldRow";
-  const lbl=document.createElement("label");
-  lbl.textContent="Minutes:";
-  const input=document.createElement("input");
-  input.type="number";input.min="0";
-  const curMin=Math.max(0,Math.round(ts.totalSec/60));input.value=curMin;
-  input.onchange=()=>{
-    let m=parseInt(input.value,10);if(isNaN(m)||m<0)m=0;
-    input.value=m;
-    if(ts.mode==="focus"){
-      const task=findTask(ts.taskUid);
-      const name=(task&&task.text)||ts.taskText;
-      const minOrNull=m===0?null:m;
-      setTaskMinutesForName(name,minOrNull);
-    }
-    if(!ts.running){
-      ts.totalSec=m*60;
-      ts.remainingSec=ts.totalSec;
-      updateTimerDisplay(kid);
-    }
-    save();
-  };
-  fieldRow.appendChild(lbl);fieldRow.appendChild(input);
-  panel.appendChild(fieldRow);
-
-  const instr=document.createElement("div");
-  instr.className="focusInstr";
-  let steps;
-  if(ts.mode==="focus"){
-    const custom=state.customInstructions && state.customInstructions[task.text];
-    steps=custom || INSTRUCTIONS[task.text] || [
-      "Start gently.",
-      "Keep going in tiny steps.",
-      "Finish & celebrate."
-    ];
-  }else{
-    steps=[
-      "Stand up, stretch, move a little.",
-      "Drink water or use the bathroom.",
-      "No screens for a minute before going back."
-    ];
-  }
-  instr.innerHTML=`<strong>Quick Steps</strong><ul class="focusSteps">${
-    steps.map(s=>`<li class="focusStep">${escapeHtml(s)}</li>`).join("")
-  }</ul><div class="tip">Timer helps your brain stay on one thing. Tiny steps + breaks = more success.</div>`;
-  panel.appendChild(instr);
-
-  const btnRow=document.createElement("div");
-  btnRow.className="focusButtons";
-
-  const btnStart=document.createElement("button");
-  btnStart.className="focusBtn";
-  btnStart.textContent=ts.running?"Pause":"Start";
-  btnStart.style.background="linear-gradient(180deg,var(--good),#22c55e)";
-  btnStart.style.color="#022c22";
-  btnStart.onclick=()=>toggleStartPause(kid);
-  btnRow.appendChild(btnStart);
-
-  const btn5=document.createElement("button");
-  btn5.className="focusBtn";btn5.textContent="+5m";
-  btn5.style.background="linear-gradient(180deg,#e5e7eb,#9ca3af)";
-  btn5.style.color="#020617";
-  btn5.onclick=()=>addMinutes(kid,5);
-  btnRow.appendChild(btn5);
-
-  const btn10=document.createElement("button");
-  btn10.className="focusBtn";btn10.textContent="+10m";
-  btn10.style.background="linear-gradient(180deg,#e5e7eb,#9ca3af)";
-  btn10.style.color="#020617";
-  btn10.onclick=()=>addMinutes(kid,10);
-  btnRow.appendChild(btn10);
-
-  const btnFinish=document.createElement("button");
-  btnFinish.className="focusBtn";btnFinish.textContent="Finish";
-  btnFinish.style.background="linear-gradient(180deg,var(--accent2),#51c7ff)";
-  btnFinish.style.color="#022c3a";
-  btnFinish.onclick=()=>finishSession(kid);
-  btnRow.appendChild(btnFinish);
-
-  const btnCancel=document.createElement("button");
-  btnCancel.className="focusBtn";btnCancel.textContent="Cancel";
-  btnCancel.style.background="linear-gradient(180deg,var(--bad),#ef4444)";
-  btnCancel.style.color="#fee2e2";
-  btnCancel.onclick=()=>{
-    cancelSession(kid);
-    closeFocusOverlay();
-  };
-  btnRow.appendChild(btnCancel);
-
-  const btnBack=document.createElement("button");
-  btnBack.className="focusBtn";
-  btnBack.textContent="Back to List (keep running)";
-  btnBack.style.background="transparent";
-  btnBack.style.border="1px solid rgba(148,163,184,0.7)";
-  btnBack.style.color="var(--muted)";
-  btnBack.onclick=()=>closeFocusOverlay();
-  btnRow.appendChild(btnBack);
-
-  panel.appendChild(btnRow);
-
-  ts.domTimerEl=timerEl;
-  ts.domStartBtn=btnStart;
-  updateTimerDisplay(kid);
+function closeFocusOverlay() {
+  document.getElementById("focusOverlay").style.display = "none";
+  Object.values(timerState).forEach(ts => {
+    if (ts && ts.interval) clearInterval(ts.interval);
+  });
 }
 
 function updateTimerDisplay(kid){
@@ -1361,7 +858,7 @@ function toggleStartPause(kid){
     clearInterval(ts.interval);ts.interval=null;ts.running=false;
     if(ts.domStartBtn)ts.domStartBtn.textContent="Start";
   }else{
-    playS();ts.running=true;
+    ts.running=true;
     if(ts.domStartBtn)ts.domStartBtn.textContent="Pause";
     ts.interval=setInterval(()=>tickTimer(kid),1000);
   }
@@ -1369,7 +866,6 @@ function toggleStartPause(kid){
 function tickTimer(kid){
   const ts=timerState[kid];if(!ts)return;
   ts.remainingSec--;
-  if(ts.remainingSec===0)playS();
   updateTimerDisplay(kid);
 }
 function addMinutes(kid,mins){
@@ -1377,345 +873,68 @@ function addMinutes(kid,mins){
   const add=mins*60;ts.totalSec+=add;ts.remainingSec+=add;
   updateTimerDisplay(kid);
 }
-function findNextTaskForKid(kid,currentUid){
-  const arr=tasksToday();const idx=arr.findIndex(t=>t.uid===currentUid);
-  if(idx<0)return null;
-  for(let i=idx+1;i<arr.length;i++){
-    const t=arr[i];
-    if((t.kid===kid||t.kid==="Both") && !isTaskDoneForKid(t,kid))return t;
-  }
-  return null;
-}
-function startNextTaskForKid(kid,currentUid){
-  const next=findNextTaskForKid(kid,currentUid);
-  if(!next)return false;
-  const baseSec=getTaskMinutes(next)*60;
-  timerState[kid]={
-    kid,taskUid:next.uid,taskText:next.text,
-    mode:"focus",
-    totalSec:baseSec,
-    remainingSec:baseSec,
-    running:true,
-    interval:null,
-    domTimerEl:null,
-    domStartBtn:null
-  };
-  playS();
-  renderFocusOverlay(kid);
-  const ts=timerState[kid];
-  if(ts)ts.interval=setInterval(()=>tickTimer(kid),1000);
-  return true;
-}
+
 function finishSession(kid){
   const ts=timerState[kid];if(!ts)return;
   if(ts.interval)clearInterval(ts.interval);
   ts.running=false;
-  const effRemain=ts.remainingSec>0?ts.remainingSec:0;
-  const actualSeconds=ts.totalSec-effRemain;
-  const overdueSeconds=ts.remainingSec<0?-ts.remainingSec:0;
-  const plannedMinutes=Math.round(ts.totalSec/60);
-  logSession(kid,ts,plannedMinutes,actualSeconds,overdueSeconds);
-  if(ts.mode==="focus"){
-    const task=findTask(ts.taskUid);
-    if(task)markTaskDoneForKid(task,kid);
-    state.xp[kid]=(state.xp[kid]||0)+5;
-    state.streak[kid]=(state.streak[kid]||0)+1;
-    playCelebration();confettiBurst();
-    if(plannedMinutes>=25){
-      if(!state.pomodoro[kid])state.pomodoro[kid]={cycles:0};
-      state.pomodoro[kid].cycles++;
-      const cycles=state.pomodoro[kid].cycles;
-      let breakMode="shortBreak",breakMin=5;
-      if(cycles%4===0){breakMode="longBreak";breakMin=15;}
-      timerState[kid]={
-        kid,taskUid:ts.taskUid,taskText:ts.taskText,
-        mode:breakMode,
-        totalSec:breakMin*60,
-        remainingSec:breakMin*60,
-        running:false,
-        interval:null,
-        domTimerEl:null,
-        domStartBtn:null
-      };
-      save();
-      // Re-render lists immediately so completed task turns green without needing a refresh
-      renderAll();
-      renderFocusOverlay(kid);
-      renderStats();
-      return;
-    }
-  }
-  const completedUid=ts.taskUid;
-  timerState[kid]=null;
+  const task=findTask(ts.taskUid);
+  if(task)markTaskDoneForKid(task,kid);
+  state.xp[kid]=(state.xp[kid]||0)+5;
+  state.streak[kid]=(state.streak[kid]||0)+1;
   save();
   closeFocusOverlay();
-  const startedNext=startNextTaskForKid(kid,completedUid);
-  if(!startedNext)renderAll();else renderStats();
-}
-
-/* cancel just stops timer & overlay, doesn't change task */
-function cancelSession(kid){
-  const ts=timerState[kid];
-  if(ts&&ts.interval)clearInterval(ts.interval);
+  renderAll();
+  renderStats();
   timerState[kid]=null;
-  closeFocusOverlay();
 }
 
-/* =================== CONFETTI =================== */
-function confettiBurst(){
-  const root=document.createElement("div");
-  root.className="confetti";
-  for(let i=0;i<25;i++){
-    const s=document.createElement("div");
-    s.className="sparkle";
-    s.style.left=Math.random()*100+"%";
-    s.style.top=Math.random()*100+"%";
-    s.style.background=Math.random()>0.5?"#ffd27a":"#7ce3ff";
-    s.style.transform=`scale(${Math.random()*1.6+0.4})`;
-    root.appendChild(s);
-  }
-  document.body.appendChild(root);
-  setTimeout(()=>root.remove(),1600);
-}
-
-/* =================== EDIT / ADD TASKS =================== */
-function openEdit(uid){
-  const t=findTask(uid);if(!t)return;
-  const ov=document.getElementById("overlays");ov.innerHTML="";
-  const wrap=document.createElement("div");wrap.className="modalWrap";
-  const box=document.createElement("div");box.className="modalBox";
-
-  const row1=document.createElement("div");
-  row1.className="modalRow";row1.innerHTML="<label>Task name</label>";
-  const inText=document.createElement("input");
-  inText.type="text";inText.value=t.text;
-  row1.appendChild(inText);
-
-  const row2=document.createElement("div");
-  row2.className="modalRow";row2.innerHTML="<label>Who does it?</label>";
-  const sel=document.createElement("select");
-  ["David","Daxel","Both"].forEach(v=>{
-    const opt=document.createElement("option");
-    opt.value=v;opt.textContent=v;
-    if(t.kid===v)opt.selected=true;
-    sel.appendChild(opt);
-  });
-  row2.appendChild(sel);
-
-  const row3=document.createElement("div");
-  row3.className="modalRow";row3.innerHTML="<label>Minutes (0 = no limit)</label>";
-  const inMin=document.createElement("input");
-  inMin.type="number";inMin.min="0";
-  const curMin=getTaskMinutes(t);
-  inMin.value=(curMin===null?0:curMin);
-  row3.appendChild(inMin);
-
-  const row4=document.createElement("div");
-  row4.className="modalRow";row4.innerHTML="<label>Instructions (one step per line, optional)</label>";
-  const inInstr=document.createElement("textarea");
-  const existingSteps=(state.customInstructions && state.customInstructions[t.text]) || INSTRUCTIONS[t.text] || [];
-  inInstr.value=existingSteps.join("\n");
-  row4.appendChild(inInstr);
-
-  const btnRow=document.createElement("div");btnRow.className="modalButtons";
-  const btnDelete=document.createElement("button");
-  btnDelete.className="danger";btnDelete.textContent="Delete";
-  btnDelete.onclick=()=>{
-    if(confirm("Delete this task?")){
-      const arr=tasksToday();
-      const idx=arr.findIndex(x=>x.uid===uid);
-      if(idx>=0)arr.splice(idx,1);
-      save();ov.innerHTML="";renderAll();
-    }
-  };
-  const btnCancel=document.createElement("button");
-  btnCancel.className="secondary";btnCancel.textContent="Cancel";
-  btnCancel.onclick=()=>{ov.innerHTML="";};
-  const btnSave=document.createElement("button");
-  btnSave.className="primary";btnSave.textContent="Save";
-  btnSave.onclick=()=>{
-    const name=inText.value.trim()||t.text;
-    let m=parseInt(inMin.value,10);if(isNaN(m)||m<0)m=0;
-    t.text=name;t.kid=sel.value;
-    const minutesOrNull=m===0?null:m;
-    setTaskMinutesForName(name,minutesOrNull);
-    const lines=inInstr.value.split("\n").map(l=>l.trim()).filter(Boolean);
-    if(!state.customInstructions)state.customInstructions={};
-    if(lines.length>0)state.customInstructions[name]=lines;
-    else delete state.customInstructions[name];
-    save();ov.innerHTML="";renderAll();
-  };
-  btnRow.appendChild(btnDelete);btnRow.appendChild(btnCancel);btnRow.appendChild(btnSave);
-
-  box.appendChild(row1);box.appendChild(row2);box.appendChild(row3);
-  box.appendChild(row4);box.appendChild(btnRow);
-  wrap.appendChild(box);ov.appendChild(wrap);
-}
-
-function openNewTask(defaultKid){
-  const ov=document.getElementById("overlays");ov.innerHTML="";
-  const wrap=document.createElement("div");wrap.className="modalWrap";
-  const box=document.createElement("div");box.className="modalBox";
-
-  const row1=document.createElement("div");
-  row1.className="modalRow";row1.innerHTML="<label>New task name</label>";
-  const inText=document.createElement("input");
-  inText.type="text";inText.placeholder="Example: Pick up toys";
-  row1.appendChild(inText);
-
-  const rowDays=document.createElement("div");
-  rowDays.className="modalRow";rowDays.innerHTML="<label>Days of week</label>";
-  const daysWrap=document.createElement("div");
-  daysWrap.style.display="flex";daysWrap.style.flexWrap="wrap";daysWrap.style.gap="4px";
-  for(let d=0;d<7;d++){
-    const lab=document.createElement("label");
-    lab.style.fontSize="11px";lab.style.display="flex";lab.style.alignItems="center";
-    const cb=document.createElement("input");
-    cb.type="checkbox";cb.value=String(d);cb.style.marginRight="4px";
-    if(d===selectedDayIndex)cb.checked=true;
-    lab.appendChild(cb);lab.appendChild(document.createTextNode(DAYS[d]));
-    daysWrap.appendChild(lab);
-  }
-  rowDays.appendChild(daysWrap);
-
-  const row2=document.createElement("div");
-  row2.className="modalRow";row2.innerHTML="<label>Who does it?</label>";
-  const sel=document.createElement("select");
-  ["David","Daxel","Both","Random","Alternate (by day)"].forEach(v=>{
-    const opt=document.createElement("option");
-    opt.value=v;opt.textContent=v;
-    if(v===defaultKid)opt.selected=true;
-    sel.appendChild(opt);
-  });
-  row2.appendChild(sel);
-
-  const row3=document.createElement("div");
-  row3.className="modalRow";row3.innerHTML="<label>Minutes (0 = no limit)</label>";
-  const inMin=document.createElement("input");
-  inMin.type="number";inMin.min="0";inMin.value="5";
-  row3.appendChild(inMin);
-
-  const rowInstr=document.createElement("div");
-  rowInstr.className="modalRow";rowInstr.innerHTML="<label>Instructions (one step per line, optional)</label>";
-  const inInstr=document.createElement("textarea");
-  inInstr.placeholder="Step 1\nStep 2\nStep 3...";
-  rowInstr.appendChild(inInstr);
-
-  const rowRepeat=document.createElement("div");
-  rowRepeat.className="modalRow";
-  const repeatLabel=document.createElement("label");
-  const repeatBox=document.createElement("input");
-  repeatBox.type="checkbox";repeatBox.checked=true;repeatBox.style.marginRight="6px";
-  repeatLabel.appendChild(repeatBox);repeatLabel.appendChild(document.createTextNode("Repeat every week"));
-  rowRepeat.appendChild(repeatLabel);
-
-  const btnRow=document.createElement("div");
-  btnRow.className="modalButtons";
-  const btnCancel=document.createElement("button");
-  btnCancel.className="secondary";btnCancel.textContent="Cancel";
-  btnCancel.onclick=()=>{ov.innerHTML="";};
-  const btnSave=document.createElement("button");
-  btnSave.className="primary";btnSave.textContent="Add Task";
-  btnSave.onclick=()=>{
-    const name=(inText.value||"").trim()||"New Task";
-    let m=parseInt(inMin.value,10);if(isNaN(m)||m<0)m=0;
-    const minutesOrNull=m===0?null:m;
-    const dayChecks=Array.from(daysWrap.querySelectorAll("input[type=checkbox]"));
-    let dayIndices=dayChecks.filter(cb=>cb.checked).map(cb=>parseInt(cb.value,10));
-    if(dayIndices.length===0)dayIndices=[selectedDayIndex];
-    const assign=sel.value;
-    const repeatWeekly=!!repeatBox.checked;
-    const lines=inInstr.value.split("\n").map(l=>l.trim()).filter(Boolean);
-    if(lines.length>0){
-      if(!state.customInstructions)state.customInstructions={};
-      state.customInstructions[name]=lines;
-    }
-    dayIndices.forEach(di=>{
-      const arr=state.tasks[di]||(state.tasks[di]=[]);
-      let kid;
-      if(assign==="Random"){
-        kid=fairAssign(name);
-      }else if(assign==="Alternate (by day)"){
-        kid=(di%2===0)?"David":"Daxel";
-      }else{
-        kid=assign;
-      }
-      arr.push({
-        uid:uid(),text:name,kid,
-        done:false,minutes:minutesOrNull,
-        doneBy:{David:false,Daxel:false},
-        repeatWeekly
-      });
+/* =================== FOCUS MODE JS =================== */
+// ONE-KID FOCUS MODE – FINAL WORKING
+document.querySelectorAll(".focusKidBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".focusKidBtn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const mode = btn.dataset.kid;
+    document.querySelectorAll(".column").forEach(col => {
+      col.style.display = (mode === "both" || col.id === "col" + mode) ? "flex" : "none";
     });
-    setTaskMinutesForName(name,minutesOrNull);
-    save();ov.innerHTML="";renderAll();
-  };
-  btnRow.appendChild(btnCancel);btnRow.appendChild(btnSave);
+  });
+});
 
-  box.appendChild(row1);
-  box.appendChild(rowDays);
-  box.appendChild(row2);
-  box.appendChild(row3);
-  box.appendChild(rowInstr);
-  box.appendChild(rowRepeat);
-  box.appendChild(btnRow);
-
-  wrap.appendChild(box);ov.appendChild(wrap);
-}
-
-/* =================== HEADER BUTTONS & DAY BUTTONS =================== */
+/* =================== BUTTONS & INIT =================== */
 document.getElementById("resetBtn").onclick=()=>{
-  if(confirm("Reset daily progress (clear non-weekly tasks, reset done flags, XP, streaks, timers, and logs)?")){
-    Object.keys(state.tasks).forEach(dayKey=>{
+  if(confirm("Reset daily progress?")){
+    Object.keys(state.tasks||{}).forEach(dayKey=>{
       const arr=state.tasks[dayKey]||[];
       const kept=arr.filter(t=>t.repeatWeekly!==false);
-      kept.forEach(t=>resetTaskDone(t));
+      kept.forEach(resetTaskDone);
       state.tasks[dayKey]=kept;
     });
     state.xp={David:0,Daxel:0};
     state.streak={David:0,Daxel:0};
-    state.pomodoro={David:{cycles:0},Daxel:{cycles:0}};
-    state.sessions=[];
-    state.completions=[];
-    timerState={David:null,Daxel:null};
-    document.getElementById("overlays").innerHTML="";
-    save();renderAll();alert("Reset done.");
+    save();
+    renderAll();
   }
 };
-document.getElementById("helpBtn").onclick=()=>{
-  alert(
-    "How this works:\n\n"+
-    "• Each child has their own list and big focus overlay.\n"+
-    "• Dishes and Counters/Floors alternate between kids Sun–Fri (one each).\n"+
-    "• Cleanup after meals is fairly assigned across the week.\n"+
-    "• Weekly chores (bathrooms, vacuum, mop, tub) are shared fairly with both kids.\n"+
-    "• Shared tasks (Both) must be completed on each child’s side.\n"+
-    "• Timers show overtime; long tasks can trigger breaks.\n"+
-    "• You can edit tasks, minutes, instructions, days, and who does it (including alternation).\n"+
-    "• Stats are completion-based: they show what each child finished or missed during the week.\n"+
-    "• At a new day, undone tasks roll to tomorrow and switch to the other kid when possible."
-  );
-};
-document.getElementById("statsBtn").onclick=openStats;
+
+document.querySelectorAll(".dayBtn").forEach(btn=>{
+  const idx=parseInt(btn.dataset.day,10);
+  if(idx===selectedDayIndex)btn.classList.add("active");
+  btn.onclick=()=>{
+    selectedDayIndex=idx;
+    document.querySelectorAll(".dayBtn").forEach(b=>b.classList.toggle("active",b.dataset.day==idx));
+    renderAll();
+    save();
+  };
+});
+
 document.querySelectorAll(".addTaskBtn").forEach(btn=>{
   btn.onclick=()=>openNewTask(btn.dataset.kid||"Both");
 });
 
-const dayBtns=document.querySelectorAll(".dayBtn");
-dayBtns.forEach(btn=>{
-  const idx=parseInt(btn.dataset.day,10);
-  if(idx===selectedDayIndex)btn.classList.add("active");
-  btn.addEventListener("click",()=>{
-    selectedDayIndex=idx;
-    dayBtns.forEach(b=>b.classList.toggle("active",b===btn));
-    renderAll();
-  });
-});
-
-/* =================== INIT: HANDLE ROLLOVER & RENDER =================== */
+/* INIT */
 document.addEventListener("DOMContentLoaded", async () => {
-  // state is initially loaded from localStorage at the top of the file.
-  // Here we try to sync with the Node server (if available), then apply day rollover.
   await loadFromServerAndMerge();
   handleDayRollover();
   renderAll();
@@ -1723,6 +942,3 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
-
-
-
