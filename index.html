@@ -653,7 +653,7 @@ if(!state || state.schemaVersion!=="v6"){
   if(!state.completions)state.completions=[];
 }
 
-const SERVER_STATE_URL = "https://chore-backend.production.railway.app/api/chore-state"; // adjust path to match your Node server
+const SERVER_STATE_URL = "https://chore-backend-production.up.railway.app/api/chore-state"; // adjust path to match your Node server
 
 function save(){
   // Always try to keep a local fallback copy
@@ -1723,4 +1723,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 </script>
 </body>
 </html>
+
 
