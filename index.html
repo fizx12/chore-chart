@@ -1,9 +1,89 @@
+<DOCUMENT filename="index_BEAUTIFUL.html">
 <!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chore Chart — Kid-Friendly</title>
+<style>
+/* ——— CENTER THE TOP SECTION LIKE THE TASK LIST ——— */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 12px 0;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.bigClockWrapper,
+.focusSwitcher {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* Make the glowing focus buttons wrap nicely on small screens */
+.focusSwitcher {
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+/* Ensure the clock stays centered even on very narrow screens */
+.bigClock {
+  min-width: auto !important;
+  width: fit-content;
+}
+
+/* On mobile: stack everything vertically and reduce sizes a bit */
+@media (max-width: 840px) {
+  .focusSwitcher {
+    gap: 16px;
+    padding: 0 10px;
+  }
+  .focusBtn {
+    min-width: 220px;
+    padding: 20px 40px;
+    font-size: 24px;
+  }
+}
+
+/* BIGGER TASKS + HUGE BUTTONS — ONLY THIS CHANGES */
+@media (max-width: 1200px) {
+  .card {
+    min-height: 140px !important;
+    padding: 28px 20px !important;
+    gap: 20px !important;
+  }
+  .cardTitle strong {
+    font-size: 36px !important;
+    font-weight: 900 !important;
+  }
+  .cardMeta {
+    font-size: 22px !important;
+  }
+  .starIcon {
+    width: 76px !important;
+    height: 76px !important;
+    font-size: 38px !important;
+  }
+  .editBtn, .moveBtn {
+    width: 76px !important;
+    height: 76px !important;
+    font-size: 36px !important;
+    border-radius: 20px !important;
+    background: rgba(255,255,255,0.2) !important;
+    border: 4px solid rgba(255,255,255,0.5) !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5) !important;
+  }
+}
+
+</style>
 <style>
 :root{
   --bg:#0b1220;--card:#0f1830;--accent:#ffb86b;--accent2:#7ce3ff;
@@ -71,12 +151,12 @@ html,body{
 }
 
 /* layout */
-.container{display:flex;flex:1;gap:12px;align-items:stretch}
+.container{display:flex;flex:1;gap:12px;align-items:stretch; max-width:900px; margin:0 auto;}
 .column{
   flex:1;
   background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
   border-radius:14px;padding:12px;
-  display:flex;flex-direction:column;min-width:260px;position:relative;
+  display:flex;flex-direction:column;min-width:200px;position:relative;
 }
 .kidHead{display:flex;align-items:center;gap:8px}
 .kidAvatar{
@@ -403,6 +483,94 @@ html,body{
 @media(max-width:880px){
   .container{flex-direction:column}
 }
+
+/* TOP TEXT — PERFECTLY CENTERED */
+.header { text-align: center; width: 100%; }
+.brand { display: block; margin: 0 auto; }
+.title { font-size: 28px !important; font-weight: 900; color: #7ce3ff; text-shadow: 0 0 20px #7ce3ff88; }
+.subtitle { font-size: 15px; color: #aaa; margin-top: 6px; }
+
+/* DAY BUTTONS — BIGGER & CENTERED */
+.dayButtons {
+  justify-content: center !important;
+  gap: 12px;
+  margin-top: 12px;
+}
+.dayBtn {
+  padding: 10px 18px !important;
+  font-size: 16px !important;
+  font-weight: 800;
+  min-width: 70px;
+  border-radius: 30px !important;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.2);
+  transition: all 0.4s ease;
+}
+.dayBtn.active {
+  background: linear-gradient(135deg, #ffb86b, #7ce3ff) !important;
+  color: #000 !important;
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(255,184,107,0.8);
+}
+
+/* WIDE GLOWING CLOCK */
+.bigClockWrapper { margin: 20px auto 40px; text-align: center; }
+.bigClock {
+  display: inline-block;
+  padding: 30px 80px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 60px;
+  border: 4px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  min-width: 720px;
+}
+.bigDay { font-size: 62px !important; font-weight: 900; color: #7ce3ff; text-shadow: 0 0 40px #7ce3ff; }
+.bigTime { font-size: 94px !important; font-weight: 900; color: #ffb86b; text-shadow: 0 0 50px #ffb86b; letter-spacing: 12px; }
+@media(max-width:840px) {
+  .bigClock { min-width: auto; padding: 24px 40px; border-radius: 40px; }
+  .bigDay { font-size: 48px !important; }
+  .bigTime { font-size: 70px !important; letter-spacing: 6px; }
+}
+
+/* GLOWING 3D FOCUS BUTTONS — INSANE */
+.focusSwitcher { justify-content: center; gap: 30px; margin: 40px 0; }
+.focusBtn {
+  padding: 24px 60px;
+  font-size: 28px;
+  font-weight: 900;
+  border-radius: 50px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+  color: #fff;
+  border: 3px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+  min-width: 280px;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+.focusBtn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: 0.7s;
+}
+.focusBtn:hover::before { left: 100%; }
+.focusBtn:hover {
+  transform: translateY(-10px) scale(1.08);
+  box-shadow: 0 30px 80px rgba(255,184,107,0.7);
+}
+.focusBtn.active {
+  background: linear-gradient(135deg, #ffb86b, #7ce3ff);
+  color: #000;
+  transform: translateY(-12px) scale(1.15);
+  box-shadow: 0 40px 100px rgba(255,184,107,0.9), 0 0 60px #ffb86b88;
+  border-color: #fff;
+}
+
 </style>
 </head>
 <body>
@@ -423,10 +591,21 @@ html,body{
           <button class="dayBtn" data-day="6">Sat</button>
         </div>
       </div>
-      <div class="dayClock">
-        <div class="dayClock-line" id="dayLabel"></div>
-        <div class="dayClock-line" id="clockLabel"></div>
-      </div>
+      
+<div class="bigClockWrapper">
+  <div class="bigClock">
+    <div id="dayLabel" class="bigDay"></div>
+    <div id="clockLabel" class="bigTime"></div>
+  </div>
+</div>
+
+<!-- GLOWING FOCUS BUTTONS -->
+<div class="focusSwitcher">
+  <button class="focusBtn active" data-kid="both">Both Kids</button>
+  <button class="focusBtn" data-kid="David">Only David</button>
+  <button class="focusBtn" data-kid="Daxel">Only Daxel</button>
+</div>
+
     </div>
     <div class="controls">
       <button class="btn" id="resetBtn">Reset Day</button>
@@ -878,6 +1057,20 @@ function moveTask(uid,delta){
   const ni=idx+delta;
   if(ni<0||ni>=arr.length)return;
   const tmp=arr[idx];arr[idx]=arr[ni];arr[ni]=tmp;
+  const movedTask = findTask(uid);
+  if (movedTask) {
+    const text = movedTask.text;
+    const kid = movedTask.kid;
+    for(let d=0;d<7;d++){
+      if(d===selectedDayIndex) continue;
+      const dayArr=state.tasks[d]||[];
+      const dayIdx=dayArr.findIndex(t=>t.text===text && t.kid===kid);
+      if(dayIdx<0) continue;
+      const dayNi=dayIdx+delta;
+      if(dayNi<0||dayNi>=dayArr.length) continue;
+      const dayTmp=dayArr[dayIdx];dayArr[dayIdx]=dayArr[dayNi];dayArr[dayNi]=dayTmp;
+    }
+  }
   save();renderAll();
 }
 function renderListForKid(kid,container){
@@ -973,7 +1166,7 @@ function openStats(){
     if(!last7Dates.includes(c.date))return;
     const kidMap=compIndex[c.kid];
     if(!kidMap[c.date])kidMap[c.date]={done:0,missed:0};
-    if(c.done)kidMap[c.date].done++;else kidMap[c.date].missed++;
+    if(c.done)kidMap[c.date].done++;else kidMap[c.date].missed++
   });
 
   ["David","Daxel"].forEach(kid=>{
@@ -1013,7 +1206,7 @@ function openStats(){
       if(c.kid!==kid)return;
       if(!c.date || c.date<last7Dates[0] || c.date>last7Dates[last7Dates.length-1])return;
       if(!byTask[c.taskText])byTask[c.taskText]={done:0,missed:0};
-      if(c.done)byTask[c.taskText].done++;else byTask[c.taskText].missed++;
+      if(c.done)byTask[c.taskText].done++;else byTask[c.taskText].missed++
     });
     const avgTitle=document.createElement("div");
     avgTitle.className="statsSectionTitle";
@@ -1096,9 +1289,7 @@ function handleDayRollover(){
     const todayTasks=state.tasks[todayIdx]||[];
     prevTasks.forEach(t=>{
       if(t.done)return;
-      let newKid=t.kid;
-      if(t.kid==="David")newKid="Daxel";
-      else if(t.kid==="Daxel")newKid="David";
+      let newKid = t.kid;
       // if the new day already has this task for that kid, reuse it and clear it
       const existingIndex=todayTasks.findIndex(nt=>nt.text===t.text && nt.kid===newKid);
       if(existingIndex>=0){
@@ -1421,6 +1612,7 @@ function finishSession(kid){
   if(ts.mode==="focus"){
     const task=findTask(ts.taskUid);
     if(task)markTaskDoneForKid(task,kid);
+    renderAll();
     state.xp[kid]=(state.xp[kid]||0)+5;
     state.streak[kid]=(state.streak[kid]||0)+1;
     playCelebration();confettiBurst();
@@ -1668,21 +1860,32 @@ function openNewTask(defaultKid){
 
 /* =================== HEADER BUTTONS & DAY BUTTONS =================== */
 document.getElementById("resetBtn").onclick=()=>{
-  if(confirm("Reset daily progress (clear non-weekly tasks, reset done flags, XP, streaks, timers, and logs)?")){
-    Object.keys(state.tasks).forEach(dayKey=>{
-      const arr=state.tasks[dayKey]||[];
-      const kept=arr.filter(t=>t.repeatWeekly!==false);
-      kept.forEach(t=>resetTaskDone(t));
-      state.tasks[dayKey]=kept;
-    });
-    state.xp={David:0,Daxel:0};
-    state.streak={David:0,Daxel:0};
-    state.pomodoro={David:{cycles:0},Daxel:{cycles:0}};
-    state.sessions=[];
-    state.completions=[];
-    timerState={David:null,Daxel:null};
-    document.getElementById("overlays").innerHTML="";
-    save();renderAll();alert("Reset done.");
+  if(confirm("Reset ALL weekly tasks to default (keeps your manual tasks and order)?")){
+    const savedCustom = state.customInstructions || {};
+    const savedDefaults = state.taskDefaults || {};
+    
+    state = {
+      schemaVersion:"v6",
+      tasks:{},
+      xp:{David:0,Daxel:0},
+      streak:{David:0,Daxel:0},
+      pomodoro:{David:{cycles:0},Daxel:{cycles:0}},
+      taskDefaults: savedDefaults,
+      sessions:[],
+      lastDate:todayStr(),
+      lastDayIndex:todayIndex(),
+      choreTurn:{dishes:"David",countersFloors:"Daxel"},
+      customInstructions: savedCustom,
+      assignmentCounts:{weekStart:weekStartStr(),perTask:{}},
+      completions:[]
+    };
+    
+    initTasks();
+    assignAlternatingDailyChores(todayIndex());
+    randomizeMealCleanup(todayIndex());
+    save();
+    renderAll();
+    alert("Week reset to default — your added tasks & instructions are safe!");
   }
 };
 document.getElementById("helpBtn").onclick=()=>{
@@ -1723,6 +1926,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   handleDayRollover();
   renderAll();
 });
+
+// EPIC CLOCK + GLOWING BUTTONS
+function updateClock() {
+  const now = new Date();
+  const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  document.getElementById("dayLabel").textContent = days[now.getDay()];
+  document.getElementById("clockLabel").textContent = now.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// GLOWING FOCUS MODE
+document.querySelectorAll(".focusBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".focusBtn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const mode = btn.dataset.kid;
+    document.querySelectorAll(".column").forEach(col => {
+      col.style.display = (mode === "both" || col.id === "col" + mode) ? "flex" : "none";
+    });
+  });
+});
+
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a94cf46cbd4c47a',t:'MTc2NDk1MDk4NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+</DOCUMENT>
